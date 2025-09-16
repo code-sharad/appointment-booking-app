@@ -147,7 +147,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PUT(request: NextRequest) {
-  // Handle updates (same as POST for now)
-  return POST(request)
-}

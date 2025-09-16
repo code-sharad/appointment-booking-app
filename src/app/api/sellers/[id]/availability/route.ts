@@ -19,8 +19,12 @@ export async function GET(
     }
 
     const { id } = await params
-    const selectedDate = new Date(date)
-    const dayOfWeek = selectedDate.getDay() + 1;
+    // Parse date properly to avoid timezone issues
+    // When date comes as "2024-01-15", we want to treat it as that exact date
+    // regardless of timezone, so we'll parse it as a local date
+    const [year, month, day] = date.split('-').map(Number)
+    const selectedDate = new Date(year, month - 1, day) // month is 0-indexed
+    const dayOfWeek = selectedDate.getDay(); // 0=Sunday, 1=Monday, etc.
 
     // Get seller timezone
 
@@ -58,8 +62,9 @@ export async function GET(
     }
 
     // Get existing appointments for the date
-    const startOfDay = new Date(date + 'T00:00:00')
-    const endOfDay = new Date(date + 'T23:59:59')
+    // Use consistent date parsing to avoid timezone issues
+    const startOfDay = new Date(year, month - 1, day, 0, 0, 0)
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59)
 
     const existingAppointments = await db
       .select()
@@ -92,8 +97,11 @@ export async function GET(
         const slotEnd = formatTime(currentTime + appointmentDuration)
 
         // Check if this slot conflicts with existing appointments
-        const slotDateTime = new Date(`${date}T${slotStart}`)
-        const slotEndDateTime = new Date(`${date}T${slotEnd}`)
+        // Use consistent date parsing - parse time components properly
+        const [slotHour, slotMinute] = slotStart.split(':').map(Number)
+        const [slotEndHour, slotEndMinute] = slotEnd.split(':').map(Number)
+        const slotDateTime = new Date(year, month - 1, day, slotHour, slotMinute)
+        const slotEndDateTime = new Date(year, month - 1, day, slotEndHour, slotEndMinute)
 
         const isBooked = dayAppointments.some(appointment => {
           const appointmentStart = new Date(appointment.startTime)
