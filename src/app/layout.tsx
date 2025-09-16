@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthSessionProvider } from "@/components/auth/session-provider";
+import { OnboardingProvider } from "@/components/onboarding-provider";
 import { Toaster } from "sonner";
 import Header from "@/components/header";
 
@@ -42,6 +43,7 @@ export default function RootLayout({
               <Header />
               {children}
             </main>
+            <OnboardingProvider />
             <Toaster richColors position="top-right" />
 
           </AuthSessionProvider>

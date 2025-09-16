@@ -1,11 +1,18 @@
 "use client";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 
 export function SignInButton({ className }: { className?: string }) {
   const { data: session, status } = useSession();
+  const [mounted, setMounted] = useState(false);
 
-  if (status === "loading") {
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || status === "loading") {
     return <Button disabled className={className}>Loading...</Button>;
   }
 

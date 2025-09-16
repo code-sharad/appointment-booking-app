@@ -6,8 +6,8 @@ export default withAuth(
     const { pathname } = req.nextUrl;
     const { token } = req.nextauth;
 
-    // Redirect unauthenticated users from protected pages to sign-in
-    if (!token && (pathname === "/" || pathname.startsWith("/availability") || pathname.startsWith("/appointments") || pathname.startsWith("/seller"))) {
+    // Redirect unauthenticated users from protected pages to sign-in (except availability which has special handling)
+    if (!token && (pathname === "/" || pathname.startsWith("/appointments") || pathname.startsWith("/seller"))) {
       const signInUrl = new URL("/api/auth/signin", req.url);
       signInUrl.searchParams.set("callbackUrl", req.url);
       return NextResponse.redirect(signInUrl);
@@ -43,7 +43,9 @@ export default withAuth(
         signInUrl.searchParams.set("callbackUrl", req.url);
         return NextResponse.redirect(signInUrl);
       }
-      if (token?.role !== "seller" && token?.role !== "both") {
+      // Allow access if user has 'notdefined' role (they'll see onboarding)
+      // Or if they have seller/both role
+      if (token?.role !== "seller" && token?.role !== "both" && token?.role !== "notdefined") {
         return NextResponse.redirect(new URL("/appointments", req.url));
       }
     }

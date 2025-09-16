@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import type { Session } from 'next-auth'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { SignInButton } from "@/components/auth/SignInButton"
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,9 +12,15 @@ import AvailabilityCalendar from '@/components/availability-calendar'
 export default function HomePage() {
   const { data: session, status } = useSession() as { data: Session | null, status: string }
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (mounted && status === 'authenticated') {
       if (session?.user?.role === 'seller' || session?.user?.role === 'both') {
         // Stay on home and show calendar for sellers
         return
@@ -22,9 +28,10 @@ export default function HomePage() {
       // Buyers go to appointments
       router.push('/appointments')
     }
-  }, [status, session?.user?.role, router])
+  }, [mounted, status, session?.user?.role, router])
 
-  if (status === 'loading') {
+  // Show loading state until mounted to prevent hydration issues
+  if (!mounted || status === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Card className="w-full max-w-md">

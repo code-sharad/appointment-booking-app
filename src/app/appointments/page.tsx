@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import type { Session } from 'next-auth'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -236,11 +237,17 @@ const AppointmentCard = ({ appointment, onAppointmentUpdate }: {
 }
 
 export default function AppointmentPage() {
-  const { data: session, status } = useSession()
+  const { data: session, status } = useSession() as { data: Session | null, status: string }
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [userRole, setUserRole] = useState<'buyer' | 'seller' | null>(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('all')
+  const [mounted, setMounted] = useState(false)
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const fetchAppointments = async () => {
     try {
@@ -265,10 +272,10 @@ export default function AppointmentPage() {
   }
 
   useEffect(() => {
-    if (session) {
+    if (mounted && session) {
       fetchAppointments()
     }
-  }, [session])
+  }, [mounted, session])
 
   // Filter list based on user's role perspective
   const perspectiveAppointments = userRole === 'buyer'
@@ -294,7 +301,7 @@ export default function AppointmentPage() {
   const upcomingCount = perspectiveAppointments.filter(apt => new Date(apt.startTime) >= new Date()).length
   const pastCount = perspectiveAppointments.filter(apt => new Date(apt.startTime) < new Date()).length
 
-  if (status === 'loading') {
+  if (!mounted || status === 'loading') {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">

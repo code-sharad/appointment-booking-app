@@ -77,6 +77,12 @@ export default function AvailabilityPage() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [initialized, setInitialized] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const timeOptions = generateTimeOptions()
 
@@ -146,11 +152,11 @@ export default function AvailabilityPage() {
   }, [session?.user?.id, initializeDefaultAvailability])
 
   useEffect(() => {
-    if (session?.user && !initialized) {
+    if (mounted && session?.user && !initialized) {
       fetchAvailability()
       setInitialized(true)
     }
-  }, [session, initialized, fetchAvailability])
+  }, [mounted, session, initialized, fetchAvailability])
 
   const updateDayAvailability = (dayOfWeek: number, isAvailable: boolean) => {
     setAvailability(prev => prev.map(day =>
@@ -256,6 +262,19 @@ export default function AvailabilityPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
+    )
+  }
+
+  if (!mounted) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="w-full max-w-md mx-auto">
+          <CardContent className="text-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </CardContent>
+        </Card>
       </div>
     )
   }

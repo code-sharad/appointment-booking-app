@@ -2,6 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import type { Session } from 'next-auth';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Calendar,
@@ -21,10 +22,35 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export default function Header() {
   const { data: session, status } = useSession() as { data: Session | null, status: string };
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSignOut = () => {
     signOut({ callbackUrl: '/' });
   };
+
+  // Don't render session-dependent content until mounted
+  if (!mounted) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto">
+          <div className="flex h-16 items-center justify-between px-4">
+            <Link href="/" className="flex items-center space-x-2">
+              <Calendar className="h-6 w-6" />
+              <span className="text-xl font-bold">BookingApp</span>
+            </Link>
+            <div className="flex items-center space-x-4">
+              <ThemeToggle />
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

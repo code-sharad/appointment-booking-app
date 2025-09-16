@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession, signIn } from "next-auth/react"
+import type { Session } from 'next-auth'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -67,7 +68,7 @@ const Stepper = ({ steps, currentStep, className }: StepperProps) => {
 }
 
 export default function OnboardingDialog({ open, onRoleUpdate }: OnboardingDialogProps) {
-  const { data: session, status } = useSession()
+  const { data: session, status } = useSession() as { data: Session | null, status: string }
   const [currentStep, setCurrentStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
