@@ -7,6 +7,7 @@ import { appointments, sellers, users, userTokens } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { GoogleCalendarService, createBookingEvent } from '@/lib/google-calendar'
 import { decrypt, encrypt } from '@/lib/encryption'
+import { fromZonedTime } from 'date-fns-tz'
 
 // Helper function to get valid access token
 async function getValidAccessToken(userId: string): Promise<string | null> {
@@ -110,10 +111,22 @@ export async function POST(request: NextRequest) {
     // Parse the date and time properly to avoid timezone conversion issues
     // The date comes as YYYY-MM-DD and timeSlot as HH:MM from frontend
 
-    // Create a date object in the seller's local timezone
-    // We'll construct the datetime string and parse it as UTC, then store it as-is
-    // The timezone field will indicate what timezone this appointment is in
-    const startDateTime = new Date(`${date}T${timeSlot}:00`)
+    // Create a date object representing the appointment time
+    // Handle timezone properly using date-fns-tz
+    let startDateTime: Date
+
+    // Parse the input date and time
+    const inputDateTime = `${date}T${timeSlot}:00`
+
+    if (sellerWithUser.seller.timezone) {
+      // Create the date in the seller's timezone, then convert to UTC for storage
+      const localDate = new Date(inputDateTime)
+      startDateTime = fromZonedTime(localDate, sellerWithUser.seller.timezone)
+    } else {
+      // Fallback to UTC if no timezone specified
+      startDateTime = new Date(`${inputDateTime}Z`)
+    }
+
     const endDateTime = new Date(startDateTime.getTime() + 60 * 60000) // 60 minutes later
 
     // Get buyer info
@@ -140,11 +153,10 @@ export async function POST(request: NextRequest) {
       })
       .returning()
 
-    // Google Calendar Integration
+    // Google Calendar Integration - Create ONE event with both attendees
     const calendarResults: {
-      buyer: { success: boolean; eventId?: string | null; eventLink?: string | null; meetLink?: string | null } | null
       seller: { success: boolean; eventId?: string | null; eventLink?: string | null; meetLink?: string | null } | null
-    } = { buyer: null, seller: null }
+    } = { seller: null }
     try {
       const calendarEvent = createBookingEvent(
         {
@@ -187,21 +199,15 @@ export async function POST(request: NextRequest) {
     // Update appointment with calendar event IDs and meeting links
     const updateData: Partial<{
       sellerEventId: string | null
-      buyerEventId: string | null
       meetingLink: string | null
     }> = {}
 
     if (calendarResults.seller?.eventId) {
       updateData.sellerEventId = calendarResults.seller.eventId
     }
-    if (calendarResults.buyer?.eventId) {
-      updateData.buyerEventId = calendarResults.buyer.eventId
-    }
-    // Use seller's meeting link as primary meeting link
+    // Use seller's meeting link as the primary meeting link (since buyer is invited to seller's event)
     if (calendarResults.seller?.meetLink) {
       updateData.meetingLink = calendarResults.seller.meetLink
-    } else if (calendarResults.buyer?.meetLink) {
-      updateData.meetingLink = calendarResults.buyer.meetLink
     }
 
     // Update the appointment if we have any calendar data to save
@@ -224,14 +230,6 @@ export async function POST(request: NextRequest) {
       success: true,
       appointment: newAppointment,
       calendar: {
-        buyer: calendarResults.buyer ? {
-          eventCreated: true,
-          eventLink: calendarResults.buyer.eventLink,
-          meetLink: calendarResults.buyer.meetLink,
-        } : {
-          eventCreated: false,
-          message: 'Calendar integration not available for buyer'
-        },
         seller: calendarResults.seller ? {
           eventCreated: true,
           eventLink: calendarResults.seller.eventLink,
@@ -239,7 +237,9 @@ export async function POST(request: NextRequest) {
         } : {
           eventCreated: false,
           message: 'Calendar integration not available for seller'
-        }
+        },
+        // Note: Buyer is automatically invited to the seller's calendar event
+        buyerInvited: calendarResults.seller?.eventId ? true : false
       }
     })
   } catch (error) {
